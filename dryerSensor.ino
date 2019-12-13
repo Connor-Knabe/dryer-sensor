@@ -1,127 +1,126 @@
-// This #include statement was automatically added by the Particle IDE.
-#include <Adafruit_MPRLS.h>
 
-/*!
- * @file mprls_simpletest.ino
- *
- * A basic test of the sensor with default settings
- * 
- * Designed specifically to work with the MPRLS sensor from Adafruit
- * ----> https://www.adafruit.com/products/3965
- *
- * These sensors use I2C to communicate, 2 pins (SCL+SDA) are required
- * to interface with the breakout.
- *
- * Adafruit invests time and resources providing this open source code,
- * please support Adafruit and open-source hardware by purchasing
- * products from Adafruit!
- *
- * Written by Limor Fried/Ladyada for Adafruit Industries.  
- *
- * MIT license, all text here must be included in any redistribution.
- *
- */
- 
-
-// You dont *need* a reset and EOC pin for most uses, so we set to -1 and don't connect
-#define RESET_PIN  -1  // set to any GPIO pin # to hard-reset on begin()
-#define EOC_PIN    -1  // set to any GPIO pin to read end-of-conversion by pin
 #define LED D7
+#define SENSORONE A0
+#define SENSORTWO A5
 
-Adafruit_MPRLS mpr = Adafruit_MPRLS(RESET_PIN, EOC_PIN);
 
 void setup() {
     Serial.begin(115200);
     Time.zone(-6);
     Time.beginDST();
     pinMode(LED, OUTPUT);
-  
-    Particle.publish("MPRLS Simple Test");
-    if (! mpr.begin()) {
-        Particle.publish("Failed to communicate with MPRLS sensor, check wiring?");
+    pinMode(SENSORONE, INPUT);
+    pinMode(SENSORTWO, INPUT);
 
-        while (1) {
-            delay(10);
-        }
-    }
-    
     RGB.control(true); 
     RGB.brightness(0);
-    Particle.publish("Found MPRLS sensor");
 
 }
 
-unsigned long lastTimeOn = 0;
-unsigned long lastTimeOff = 0;
-unsigned long lastTimeAlertOff = 0;
+
 
 
 bool fanHasBeenOn = false;
 bool fanHasBeenOffAlert = true;
-int fanOnTime = 30;
-int fanOffTime = 5;
+
+//how many minutes fan needs to be on before alerting
+int fanOnTime = 1;
+int fanOffTime = 1;
+
+
 //3 days
 //int fanOffAlertTime = 3 * 24 * 60;
 //12 hours
-int fanOffAlertTime = 1 * 12 * 60;
+//int fanOffAlertTime = 1 * 12 * 60;
 
+//1 min
+int fanOffAlertTime = 1;
+
+unsigned long lastTimeOneOn = 0;
+unsigned long lastTimeOneOff = 0;
+unsigned long lastTimeAlertOneOff = 0;
+
+unsigned long lastTimeTwoOn = 0;
+unsigned long lastTimeTwoOff = 0;
+unsigned long lastTimeAlertTwoOff = 0;
+
+uint32_t msDelay;
 
 
 void loop() {
-    long pressure_hPa = mpr.readPressure();
-    char psiStr[15];
-    sprintf(psiStr, "%ld", pressure_hPa);
-        
-    Particle.publish("PSI", psiStr, 60, PRIVATE);
-    
-    unsigned long nowOn = millis();
-    unsigned long nowOff = millis();
-    unsigned long nowAlertOff = millis();
+    if (millis() - msDelay < 3000) return;
+    msDelay = millis();
+  
+    int sensorOneValue = analogRead(SENSORONE);
+    int sensorTwoValue = analogRead(SENSORTWO);
 
-     
-    //1 hour
+    detectPower(1, sensorOneValue,"dryerOne ", lastTimeOneOn, lastTimeOneOff, lastTimeAlertOneOff);
+    detectPower(2, sensorTwoValue,"dryerTwo ", lastTimeTwoOn, lastTimeTwoOff, lastTimeAlertTwoOff);
     
-    if(pressure_hPa>990){
+}
+
+
+void detectPower(int dryerNum, int sensorVal, char *dryerName, unsigned long &lastTimeOn, unsigned long &lastTimeOff, unsigned long &lastTimeAlertOff){
+
+    
+    char alertInfo[40];
+    char sensorStr[10];
+    char lastOffTimeStr[20];
+
+    //adjust for sensor differences
+    if (dryerNum == 1){
+        sensorVal -= 100;    
+    } else {
+        
+    }
+    
+    strcpy(alertInfo, dryerName);
+    sprintf(sensorStr, "%ld-", sensorVal);
+    strcat(alertInfo, sensorStr);
+    
+    Particle.publish("Electricity", alertInfo, 60, PRIVATE);
+
+
+    sprintf(lastOffTimeStr, "%ld", lastTimeOn);
+
+    strcat(alertInfo, lastOffTimeStr);
+
+    Particle.publish("TheLastOffTime", alertInfo, 60, PRIVATE);
+
+
+    if(sensorVal<2800 || sensorVal > 3100){
         //fan on
         digitalWrite(LED, HIGH);
-        if ((nowOn - lastTimeOn) >=  fanOnTime * 60 * 1000) {
-        	lastTimeOn = nowOn;
+        
+
+        if ((millis() - lastTimeOn) >=  fanOnTime * 60 * 1000) {
+        	(lastTimeOn) = millis();
         	//fan was previously off but now is on for x time
             if(!fanHasBeenOn){
-                Particle.publish("fan_on", NULL, 60,  PRIVATE);
+                Particle.publish("fan_on", dryerName, 60,  PRIVATE);
                 fanHasBeenOn = true;
                 fanHasBeenOffAlert = false;
             } 
         }
     } else {
         digitalWrite(LED, LOW);
-
-        if ((nowOff - lastTimeOff) >=  fanOffTime * 60 * 1000) {
-        	lastTimeOff = nowOff;
+        if ((millis() - lastTimeOff) >=  fanOffTime * 60 * 1000) {
+        	(lastTimeOff) = millis();
         	//fan was previously on but now is off for x time
             if(fanHasBeenOn){
-                Particle.publish("fan_off", NULL, 60,  PRIVATE);
+                Particle.publish("fan_off", dryerName, 60,  PRIVATE);
                 fanHasBeenOn = false;
             } 
         }
 
-        if ((nowAlertOff - lastTimeAlertOff) >=  fanOffAlertTime * 60  * 1000) {
-        	lastTimeAlertOff = nowAlertOff;
+        if ((millis() - lastTimeAlertOff) >=  fanOffAlertTime * 60  * 1000) {
+        	(lastTimeAlertOff) = millis();
         	//fan was previously on but now is off for x time
             if(fanHasBeenOffAlert){
-                Particle.publish("fan_off_days_alert", NULL, 60,  PRIVATE);
+                Particle.publish("fan_off_days_alert", dryerName, 60,  PRIVATE);
             } else { 
                 fanHasBeenOffAlert = true;
             } 
         }
-
-      
     }
-
-    delay(1000);
 }
-
-
-
-
-
