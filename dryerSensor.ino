@@ -61,37 +61,21 @@ void loop() {
 
 
 void detectPower(int dryerNum, int sensorVal, char *dryerName, unsigned long &lastTimeOn, unsigned long &lastTimeOff, unsigned long &lastTimeAlertOff){
-
-    
     char alertInfo[40];
     char sensorStr[10];
     char lastOffTimeStr[20];
 
-    //adjust for sensor differences
-    if (dryerNum == 1){
-        sensorVal -= 100;    
-    } else {
-        
-    }
-    
     strcpy(alertInfo, dryerName);
-    sprintf(sensorStr, "%ld-", sensorVal);
+    sprintf(sensorStr, "Power: %ld", sensorVal);
     strcat(alertInfo, sensorStr);
     
-    Particle.publish("Electricity", alertInfo, 60, PRIVATE);
 
+    if(sensorVal<2875 || sensorVal > 2890){
+        Particle.publish("ElectricityON", alertInfo, 60, PRIVATE);
 
-    sprintf(lastOffTimeStr, "%ld", lastTimeOn);
-
-    strcat(alertInfo, lastOffTimeStr);
-
-    Particle.publish("TheLastOffTime", alertInfo, 60, PRIVATE);
-
-
-    if(sensorVal<2800 || sensorVal > 3100){
         //fan on
         digitalWrite(LED, HIGH);
-        
+
 
         if ((millis() - lastTimeOn) >=  fanOnTime * 60 * 1000) {
         	(lastTimeOn) = millis();
@@ -104,6 +88,8 @@ void detectPower(int dryerNum, int sensorVal, char *dryerName, unsigned long &la
         }
     } else {
         digitalWrite(LED, LOW);
+        Particle.publish("ElectricityOff", alertInfo, 60, PRIVATE);
+
         if ((millis() - lastTimeOff) >=  fanOffTime * 60 * 1000) {
         	(lastTimeOff) = millis();
         	//fan was previously on but now is off for x time
