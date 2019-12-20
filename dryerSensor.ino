@@ -1,8 +1,6 @@
-
 #define LED D7
 #define SENSORONE A0
 #define SENSORTWO A5
-
 
 void setup() {
     Serial.begin(115200);
@@ -14,27 +12,20 @@ void setup() {
 
     RGB.control(true); 
     RGB.brightness(0);
-
 }
-
-
-
 
 bool fanHasBeenOn = false;
 bool fanHasBeenOffAlert = true;
 
 //how many minutes fan needs to be on before alerting
-int fanOnTime = 1;
-int fanOffTime = 1;
-
+int fanOnTime = 5;
+int fanOffTime = 5;
 
 //3 days
-//int fanOffAlertTime = 3 * 24 * 60;
+int fanOffAlertTime = 3 * 24 * 60;
 //12 hours
 //int fanOffAlertTime = 1 * 12 * 60;
 
-//1 min
-int fanOffAlertTime = 1;
 
 unsigned long lastTimeOneOn = 0;
 unsigned long lastTimeOneOff = 0;
@@ -56,7 +47,6 @@ void loop() {
 
     detectPower(1, sensorOneValue,"dryerOne ", lastTimeOneOn, lastTimeOneOff, lastTimeAlertOneOff);
     detectPower(2, sensorTwoValue,"dryerTwo ", lastTimeTwoOn, lastTimeTwoOff, lastTimeAlertTwoOff);
-    
 }
 
 
@@ -69,13 +59,11 @@ void detectPower(int dryerNum, int sensorVal, char *dryerName, unsigned long &la
     sprintf(sensorStr, "Power: %ld", sensorVal);
     strcat(alertInfo, sensorStr);
     
-
-    if(sensorVal<2875 || sensorVal > 2890){
+    if(sensorVal<2800 || sensorVal > 2890){
         Particle.publish("ElectricityON", alertInfo, 60, PRIVATE);
 
         //fan on
         digitalWrite(LED, HIGH);
-
 
         if ((millis() - lastTimeOn) >=  fanOnTime * 60 * 1000) {
         	(lastTimeOn) = millis();
