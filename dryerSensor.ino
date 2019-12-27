@@ -14,8 +14,6 @@ void setup() {
     RGB.brightness(0);
 }
 
-bool fanHasBeenOn = false;
-bool fanHasBeenOffAlert = true;
 
 //how many minutes fan needs to be on before alerting
 int fanOnTime = 5;
@@ -26,6 +24,15 @@ int fanOffAlertTime = 3 * 24 * 60;
 //12 hours
 //int fanOffAlertTime = 1 * 12 * 60;
 
+//1 min
+// int fanOffAlertTime = 1;
+
+
+bool fanOneHasBeenOn = false;
+bool fanOneHasBeenOffAlert = true;
+
+bool fanTwoHasBeenOn = false;
+bool fanTwoHasBeenOffAlert = true;
 
 unsigned long lastTimeOneOn = 0;
 unsigned long lastTimeOneOff = 0;
@@ -45,15 +52,16 @@ void loop() {
     int sensorOneValue = analogRead(SENSORONE);
     int sensorTwoValue = analogRead(SENSORTWO);
 
-    detectPower(1, sensorOneValue,"dryerOne ", lastTimeOneOn, lastTimeOneOff, lastTimeAlertOneOff);
-    detectPower(2, sensorTwoValue,"dryerTwo ", lastTimeTwoOn, lastTimeTwoOff, lastTimeAlertTwoOff);
+    detectPower(sensorOneValue,"dryerOne ", lastTimeOneOn, lastTimeOneOff, lastTimeAlertOneOff, fanOneHasBeenOn, fanOneHasBeenOffAlert);
+    detectPower(sensorTwoValue,"dryerTwo ", lastTimeTwoOn, lastTimeTwoOff, lastTimeAlertTwoOff, fanTwoHasBeenOn, fanTwoHasBeenOffAlert);
 }
 
 
-void detectPower(int dryerNum, int sensorVal, char *dryerName, unsigned long &lastTimeOn, unsigned long &lastTimeOff, unsigned long &lastTimeAlertOff){
+void detectPower(int sensorVal, char *dryerName, unsigned long &lastTimeOn, unsigned long &lastTimeOff, unsigned long &lastTimeAlertOff, bool &fanHasBeenOn, bool &fanHasBeenOffAlert){
     char alertInfo[40];
     char sensorStr[10];
     char lastOffTimeStr[20];
+
 
     strcpy(alertInfo, dryerName);
     sprintf(sensorStr, "Power: %ld", sensorVal);
